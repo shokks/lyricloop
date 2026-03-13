@@ -50,16 +50,16 @@ Each parent task follows this lifecycle:
 
 ## Tasks
 
-- [ ] 1.0 Install dependencies & configure project
-  - [ ] 1.1 Create and checkout branch: `git checkout -b feature/1-project-setup` (~5 min)
-  - [ ] 1.2 Install `expo-av`: `npx expo install expo-av` (~10 min)
-  - [ ] 1.3 Install `expo-sharing`: `npx expo install expo-sharing` (~5 min)
-  - [ ] 1.4 Install `@react-native-async-storage/async-storage`: `npx expo install @react-native-async-storage/async-storage` (~5 min)
-  - [ ] 1.5 Add microphone permission strings to `app.json` under `ios.infoPlist` (`NSMicrophoneUsageDescription`) and `android.permissions` (`RECORD_AUDIO`) (~15 min)
-  - [ ] 1.6 Create `types/index.ts` with shared types: `Song` (id, name, lyrics, scrollSpeed, createdAt), `ScrollSpeed` (`'slow' | 'medium' | 'fast'`), `RecordingState` (`'idle' | 'recording' | 'stopped'`) (~15 min)
-  - [ ] 1.7 Verify: `npx expo start` runs without errors; all packages resolve in Expo Go on device (~10 min)
-  - [ ] 1.8 Get user approval
-  - [ ] 1.9 Commit changes, merge `feature/1-project-setup` to `main`, delete branch (~10 min)
+- [x] 1.0 Install dependencies & configure project
+  - [x] 1.1 Create and checkout branch: `git checkout -b feature/1-project-setup` (~5 min)
+  - [x] 1.2 Install `expo-av`: `npx expo install expo-av` (~10 min)
+  - [x] 1.3 Install `expo-sharing`: `npx expo install expo-sharing` (~5 min)
+  - [x] 1.4 Install `@react-native-async-storage/async-storage`: `npx expo install @react-native-async-storage/async-storage` (~5 min)
+  - [x] 1.5 Add microphone permission strings to `app.json` under `ios.infoPlist` (`NSMicrophoneUsageDescription`) and `android.permissions` (`RECORD_AUDIO`) (~15 min)
+  - [x] 1.6 Create `types/index.ts` with shared types: `Song` (id, name, lyrics, scrollSpeed, createdAt), `ScrollSpeed` (`'slow' | 'medium' | 'fast'`), `RecordingState` (`'idle' | 'recording' | 'stopped'`) (~15 min)
+  - [x] 1.7 Verify: `npx expo start` runs without errors; all packages resolve in Expo Go on device (~10 min)
+  - [x] 1.8 Get user approval
+  - [x] 1.9 Commit changes, merge `feature/1-project-setup` to `main`, delete branch (~10 min)
 
 - [ ] 2.0 Build local song library (storage layer + library screen)
   - [ ] 2.1 Create and checkout branch: `git checkout -b feature/2-song-library` (~5 min)
