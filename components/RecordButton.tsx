@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet } from 'react-native';
 
+import { Palette } from '@/constants/theme';
 import type { RecordingState } from '@/types';
 
 type RecordButtonProps = {
@@ -43,7 +44,7 @@ export function RecordButton({ recordingState, onStart, onStop }: RecordButtonPr
       onPress={isRecording ? onStop : onStart}
       style={styles.wrapper}>
       <Animated.View style={[styles.button, isRecording ? styles.recordingButton : undefined, { transform: [{ scale: pulse }] }]}>
-        <Feather color="#FFFFFF" name={isRecording ? 'square' : 'mic'} size={28} />
+        <Feather color={Palette.textPrimary} name={isRecording ? 'square' : 'mic'} size={28} />
       </Animated.View>
     </Pressable>
   );
@@ -52,17 +53,18 @@ export function RecordButton({ recordingState, onStart, onStop }: RecordButtonPr
 const styles = StyleSheet.create({
   wrapper: {
     alignItems: 'center',
-    marginTop: 16,
   },
   button: {
     alignItems: 'center',
-    backgroundColor: '#DC2626',
+    backgroundColor: Palette.recordRed,
     borderRadius: 40,
-    height: 80,
+    height: 72,
     justifyContent: 'center',
-    width: 80,
+    width: 72,
   },
   recordingButton: {
-    backgroundColor: '#B91C1C',
+    backgroundColor: Palette.recordActive,
+    height: 80,
+    width: 80,
   },
 });

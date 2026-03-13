@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { Palette } from '@/constants/theme';
 import type { ScrollSpeed } from '@/types';
 
 type SpeedSliderProps = {
@@ -43,18 +44,18 @@ const styles = StyleSheet.create({
   },
   optionButton: {
     alignItems: 'center',
-    borderColor: '#9CA3AF',
+    borderColor: Palette.border,
     borderRadius: 8,
     borderWidth: 1,
     flex: 1,
     paddingVertical: 10,
   },
   optionButtonSelected: {
-    backgroundColor: '#0A7EA4',
-    borderColor: '#0A7EA4',
+    backgroundColor: Palette.accentMuted,
+    borderColor: Palette.accent,
   },
   optionLabelSelected: {
-    color: '#FFFFFF',
+    color: Palette.accent,
     fontWeight: '600',
   },
 });

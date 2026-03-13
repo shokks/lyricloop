@@ -1,0 +1,274 @@
+import { Feather } from '@expo/vector-icons';
+import { Stack, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { LyricsScrollView } from '@/components/LyricsScrollView';
+import { PostRecordingView } from '@/components/PostRecordingView';
+import { RecordButton } from '@/components/RecordButton';
+import { Palette } from '@/constants/theme';
+import { useRecording } from '@/lib/useRecording';
+import { getSongs, saveSong } from '@/lib/storage';
+import type { ScrollSpeed, Song } from '@/types';
+
+type RecordingScreenProps = {
+  songId: string;
+};
+
+const SPEED_OPTIONS: { label: string; value: ScrollSpeed }[] = [
+  { label: 'Slow', value: 'slow' },
+  { label: 'Med', value: 'medium' },
+  { label: 'Fast', value: 'fast' },
+];
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function AudioActivityBar() {
+  const opacityAnim = useRef(new Animated.Value(0.25)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacityAnim, { toValue: 0.5, duration: 900, useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 0.15, duration: 900, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacityAnim]);
+
+  return <Animated.View style={[styles.audioActivityBar, { opacity: opacityAnim }]} />;
+}
+
+export function RecordingScreen({ songId }: RecordingScreenProps) {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  const [songName, setSongName] = useState('');
+  const [lyrics, setLyrics] = useState('');
+  const [scrollSpeed, setScrollSpeed] = useState<ScrollSpeed>('medium');
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const songRef = useRef<Song | null>(null);
+
+  const { errorMessage, recordingState, recordingUri, resetRecording, startRecording, stopRecording } =
+    useRecording();
+
+  useEffect(() => {
+    void (async () => {
+      const songs = await getSongs();
+      const song = songs.find((s) => s.id === songId);
+      if (!song) return;
+      setSongName(song.name);
+      setLyrics(song.lyrics);
+      setScrollSpeed(song.scrollSpeed);
+      songRef.current = song;
+    })();
+  }, [songId]);
+
+  // Elapsed timer — only runs while recording
+  useEffect(() => {
+    if (recordingState === 'recording') {
+      setElapsedSeconds(0);
+      timerRef.current = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    } else {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [recordingState]);
+
+  const handleSpeedChange = useCallback(
+    async (speed: ScrollSpeed) => {
+      setScrollSpeed(speed);
+      if (!songRef.current) return;
+      const updated = { ...songRef.current, scrollSpeed: speed };
+      songRef.current = updated;
+      await saveSong(updated);
+    },
+    []
+  );
+
+  const handleStartRecording = useCallback(async () => {
+    await startRecording();
+  }, [startRecording]);
+
+  const handleStopRecording = useCallback(async () => {
+    await stopRecording();
+  }, [stopRecording]);
+
+  const handleDone = useCallback(() => {
+    router.replace('/');
+  }, [router]);
+
+  const bottomInset = Math.max(insets.bottom, 16);
+
+  // ─── Pre-Record ──────────────────────────────────────────────────────────────
+
+  if (recordingState === 'idle') {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+
+        <View style={[styles.backRow, { paddingTop: insets.top + 8 }]}>
+          <Pressable
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 16 }}
+            onPress={() => router.back()}
+            style={styles.backButton}>
+            <Feather color={Palette.accent} name="chevron-left" size={26} />
+          </Pressable>
+        </View>
+
+        <ScrollView
+          contentContainerStyle={styles.previewContent}
+          showsVerticalScrollIndicator={false}
+          style={styles.lyricsScroll}>
+          <Text style={styles.lyricsPreviewText}>{lyrics || 'No lyrics yet.'}</Text>
+        </ScrollView>
+
+        <View style={styles.speedRow}>
+          {SPEED_OPTIONS.map((opt) => {
+            const active = scrollSpeed === opt.value;
+            return (
+              <Pressable
+                key={opt.value}
+                onPress={() => void handleSpeedChange(opt.value)}
+                style={[styles.speedChip, active && styles.speedChipActive]}>
+                <Text style={[styles.speedLabel, active && styles.speedLabelActive]}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={[styles.recordArea, { paddingBottom: bottomInset }]}>
+          <RecordButton
+            onStart={() => void handleStartRecording()}
+            onStop={() => void handleStopRecording()}
+            recordingState={recordingState}
+          />
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+        </View>
+      </View>
+    );
+  }
+
+  // ─── Recording ───────────────────────────────────────────────────────────────
+
+  if (recordingState === 'recording') {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <LyricsScrollView lyrics={lyrics} scrollSpeed={scrollSpeed} />
+        <AudioActivityBar />
+        <View style={[styles.recordArea, { paddingBottom: bottomInset }]}>
+          <Text style={[styles.timer, { bottom: bottomInset + 80 + 12 }]}>
+            {formatTime(elapsedSeconds)}
+          </Text>
+          <RecordButton
+            onStart={() => void handleStartRecording()}
+            onStop={() => void handleStopRecording()}
+            recordingState={recordingState}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  // ─── Post-Recording ──────────────────────────────────────────────────────────
+
+  return (
+    <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <PostRecordingView
+        onDone={handleDone}
+        onReRecord={resetRecording}
+        recordingUri={recordingUri}
+        songName={songName}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: Palette.background,
+    flex: 1,
+  },
+  backRow: {
+    paddingBottom: 8,
+    paddingHorizontal: 12,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+  },
+  lyricsScroll: {
+    flex: 1,
+  },
+  previewContent: {
+    paddingBottom: 24,
+    paddingHorizontal: 24,
+  },
+  lyricsPreviewText: {
+    color: Palette.textSecondary,
+    fontFamily: 'Lora',
+    fontSize: 22,
+    lineHeight: 37,
+  },
+  speedRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 20,
+  },
+  speedChip: {
+    alignItems: 'center',
+    backgroundColor: Palette.surfaceRaised,
+    borderRadius: 8,
+    flex: 1,
+    height: 36,
+    justifyContent: 'center',
+  },
+  speedChipActive: {
+    backgroundColor: Palette.accentMuted,
+  },
+  speedLabel: {
+    color: Palette.textSecondary,
+    fontFamily: 'DM-Sans',
+    fontSize: 14,
+  },
+  speedLabelActive: {
+    color: Palette.accent,
+    fontFamily: 'DM-Sans-SemiBold',
+    fontSize: 14,
+  },
+  recordArea: {
+    alignItems: 'center',
+    paddingTop: 8,
+  },
+  audioActivityBar: {
+    backgroundColor: Palette.accent,
+    height: 2,
+    marginHorizontal: 20,
+  },
+  timer: {
+    color: Palette.textSecondary,
+    fontFamily: 'DM-Sans',
+    fontSize: 13,
+    fontVariant: ['tabular-nums'],
+    left: 20,
+    position: 'absolute',
+  },
+  errorText: {
+    color: Palette.recordRed,
+    fontFamily: 'DM-Sans',
+    fontSize: 13,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+});

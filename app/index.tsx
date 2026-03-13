@@ -1,16 +1,45 @@
 import { Feather } from '@expo/vector-icons';
 import { type Href, Stack, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { SongListItem } from '@/components/SongListItem';
-import { ThemedText } from '@/components/themed-text';
 import { deleteSong, getSongs } from '@/lib/storage';
+import { Palette } from '@/constants/theme';
 import type { Song } from '@/types';
+
+type AnimatedSongItemProps = {
+  song: Song;
+  index: number;
+  onPress: (id: string) => void;
+  onDelete: (id: string) => void;
+};
+
+function AnimatedSongItem({ song, index, onPress, onDelete }: AnimatedSongItemProps) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const delay = useRef(Math.min(index * 50, 250)).current;
+
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 300,
+      delay,
+      useNativeDriver: true,
+    }).start();
+  }, [opacity, delay]);
+
+  return (
+    <Animated.View style={{ opacity }}>
+      <SongListItem song={song} onPress={onPress} onDelete={onDelete} />
+    </Animated.View>
+  );
+}
 
 export default function LibraryScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [songs, setSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -26,10 +55,13 @@ export default function LibraryScreen() {
     }, [loadSongs])
   );
 
-  const handleDeleteSong = useCallback(async (id: string) => {
-    await deleteSong(id);
-    await loadSongs();
-  }, [loadSongs]);
+  const handleDeleteSong = useCallback(
+    async (id: string) => {
+      await deleteSong(id);
+      await loadSongs();
+    },
+    [loadSongs]
+  );
 
   const handleOpenSong = useCallback(
     (id: string) => {
@@ -38,58 +70,93 @@ export default function LibraryScreen() {
     [router]
   );
 
+  const fabBottom = Math.max(insets.bottom + 16, 32);
+
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <Pressable
-              accessibilityLabel="Create a new song"
-              onPress={() => router.push('/song/new' as Href)}
-              style={styles.addButton}>
-              <Feather color="#0A7EA4" name="plus" size={22} />
-            </Pressable>
-          ),
-          title: 'Songs',
-        }}
-      />
+      <Stack.Screen options={{ title: 'LyricLoop' }} />
 
       <FlatList
-        contentContainerStyle={songs.length === 0 ? styles.emptyStateContainer : undefined}
+        contentContainerStyle={[
+          songs.length === 0 ? styles.emptyContainer : styles.listContent,
+          { paddingBottom: fabBottom + 72 },
+        ]}
         data={songs}
         keyExtractor={(item) => item.id}
         ListEmptyComponent={
-          <ThemedText style={styles.emptyStateText}>
-            {isLoading ? 'Loading songs...' : 'No songs yet — tap + to start'}
-          </ThemedText>
+          isLoading ? null : (
+            <View style={styles.emptyContent}>
+              <Text style={styles.emptyPrimary}>No songs yet.</Text>
+              <Text style={styles.emptySecondary}>Tap + to record your first.</Text>
+            </View>
+          )
         }
-        renderItem={({ item }) => (
-          <SongListItem onDelete={handleDeleteSong} onPress={handleOpenSong} song={item} />
+        renderItem={({ item, index }) => (
+          <AnimatedSongItem
+            index={index}
+            onDelete={handleDeleteSong}
+            onPress={handleOpenSong}
+            song={item}
+          />
         )}
       />
+
+      <Pressable
+        accessibilityLabel="Create a new song"
+        accessibilityRole="button"
+        onPress={() => router.push('/song/new' as Href)}
+        style={[styles.fab, { bottom: fabBottom }]}>
+        <Feather color={Palette.background} name="plus" size={26} />
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: Palette.background,
     flex: 1,
   },
-  addButton: {
-    alignItems: 'center',
-    borderRadius: 18,
-    height: 36,
-    justifyContent: 'center',
-    width: 36,
+  listContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
   },
-  emptyStateContainer: {
+  emptyContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 32,
   },
-  emptyStateText: {
-    fontSize: 18,
-    lineHeight: 26,
+  emptyContent: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyPrimary: {
+    color: Palette.textSecondary,
+    fontFamily: 'DM-Sans',
+    fontSize: 16,
+    lineHeight: 24,
     textAlign: 'center',
+  },
+  emptySecondary: {
+    color: Palette.textDisabled,
+    fontFamily: 'DM-Sans',
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: 'center',
+  },
+  fab: {
+    alignItems: 'center',
+    backgroundColor: Palette.accent,
+    borderRadius: 28,
+    elevation: 4,
+    height: 56,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 20,
+    shadowColor: Palette.accent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    width: 56,
   },
 });

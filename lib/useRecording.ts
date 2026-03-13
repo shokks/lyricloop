@@ -1,52 +1,60 @@
-import { useCallback, useRef, useState } from 'react';
-import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
+import { useCallback, useState } from 'react';
+import {
+  requestRecordingPermissionsAsync,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioRecorder,
+} from 'expo-audio';
 import { Platform } from 'react-native';
 
 import type { RecordingState } from '@/types';
 
 export function useRecording() {
-  const recordingRef = useRef<Audio.Recording | null>(null);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const resetAudioMode = useCallback(async () => {
+    if (Platform.OS !== 'ios') {
+      return;
+    }
+
+    try {
+      await setAudioModeAsync({
+        allowsRecording: false,
+        interruptionMode: 'mixWithOthers',
+        playsInSilentMode: true,
+      });
+    } catch {}
+  }, []);
 
   const startRecording = useCallback(async () => {
     if (recordingState === 'recording') {
       return false;
     }
 
-    const permission = await Audio.requestPermissionsAsync();
+    const permission = await requestRecordingPermissionsAsync();
 
     if (!permission.granted) {
       setErrorMessage('Microphone permission is required to record.');
       return false;
     }
 
-    const startWithMode = async (androidMode: InterruptionModeAndroid) => {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        interruptionModeAndroid: androidMode,
-        interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
+    const startWithMode = async (interruptionMode: 'mixWithOthers' | 'duckOthers') => {
+      await setAudioModeAsync({
+        allowsRecording: true,
+        interruptionMode,
+        playsInSilentMode: true,
       });
 
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      await recording.startAsync();
-
-      return recording;
+      await recorder.prepareToRecordAsync();
+      recorder.record();
     };
 
     try {
-      let recording = await startWithMode(InterruptionModeAndroid.DoNotMix);
-
-      if (Platform.OS === 'android' && !recording) {
-        recording = await startWithMode(InterruptionModeAndroid.DuckOthers);
-      }
-
-      recordingRef.current = recording;
+      await startWithMode('mixWithOthers');
       setRecordingUri(null);
       setErrorMessage(null);
       setRecordingState('recording');
@@ -55,9 +63,7 @@ export function useRecording() {
     } catch {
       if (Platform.OS === 'android') {
         try {
-          const fallbackRecording = await startWithMode(InterruptionModeAndroid.DuckOthers);
-
-          recordingRef.current = fallbackRecording;
+          await startWithMode('duckOthers');
           setRecordingUri(null);
           setErrorMessage(null);
           setRecordingState('recording');
@@ -74,36 +80,38 @@ export function useRecording() {
       setRecordingState('idle');
       return false;
     }
-  }, [recordingState]);
+  }, [recorder, recordingState]);
 
   const stopRecording = useCallback(async () => {
-    const recording = recordingRef.current;
-
-    if (!recording) {
+    if (!recorder.isRecording && recordingState !== 'recording') {
       return null;
     }
 
     try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
+      await recorder.stop();
 
-      recordingRef.current = null;
+      const status = recorder.getStatus();
+      const uri = recorder.uri ?? status.url ?? null;
       setRecordingUri(uri ?? null);
       setRecordingState('stopped');
+      setErrorMessage(null);
+
+      await resetAudioMode();
 
       return uri;
     } catch {
       setErrorMessage('Could not stop recording. Please try again.');
       return null;
     }
-  }, []);
+  }, [recorder, recordingState, resetAudioMode]);
 
   const resetRecording = useCallback(() => {
-    recordingRef.current = null;
+    void resetAudioMode();
+
     setRecordingUri(null);
     setErrorMessage(null);
     setRecordingState('idle');
-  }, []);
+  }, [resetAudioMode]);
 
   return {
     errorMessage,

@@ -1,14 +1,22 @@
-import { Stack, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { type Href, Stack, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { LyricsScrollView } from '@/components/LyricsScrollView';
-import { RecordButton } from '@/components/RecordButton';
-import { SpeedSlider } from '@/components/SpeedSlider';
-import { ThemedText } from '@/components/themed-text';
-import { useRecording } from '@/lib/useRecording';
+import { Palette } from '@/constants/theme';
 import { getSongs, saveSong } from '@/lib/storage';
-import { useThemeColor } from '@/hooks/use-theme-color';
 import type { ScrollSpeed } from '@/types';
 
 type SongEditorScreenProps = {
@@ -17,42 +25,37 @@ type SongEditorScreenProps = {
 
 export function SongEditorScreen({ songId }: SongEditorScreenProps) {
   const router = useRouter();
-  const textColor = useThemeColor({}, 'text');
-  const inputBackgroundColor = useThemeColor({ light: '#F9FAFB', dark: '#1F2937' }, 'background');
-  const inputBorderColor = useThemeColor({ light: '#D1D5DB', dark: '#374151' }, 'icon');
+  const insets = useSafeAreaInsets();
 
   const [name, setName] = useState('');
   const [lyrics, setLyrics] = useState('');
   const [scrollSpeed, setScrollSpeed] = useState<ScrollSpeed>('medium');
   const [isLoading, setIsLoading] = useState(Boolean(songId));
   const [isMissingSong, setIsMissingSong] = useState(false);
-  const [createdAt, setCreatedAt] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
-  const {
-    errorMessage,
-    recordingState,
-    recordingUri,
-    resetRecording,
-    startRecording,
-    stopRecording,
-  } = useRecording();
+  const stableSongId = useRef(songId ?? `song-${Date.now()}`);
+  const createdAtRef = useRef<string | null>(null);
+  const lyricsRef = useRef<TextInput>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 0 = preview mode, 1 = edit mode
+  const modeAnim = useRef(new Animated.Value(0)).current;
+
+  // Load existing song
   useEffect(() => {
     if (!songId) {
       setIsLoading(false);
-      setIsMissingSong(false);
       return;
     }
 
-    let isMounted = true;
+    let mounted = true;
 
-    const loadSong = async () => {
+    void (async () => {
       const songs = await getSongs();
-      const song = songs.find((savedSong) => savedSong.id === songId);
+      const song = songs.find((s) => s.id === songId);
 
-      if (!isMounted) {
-        return;
-      }
+      if (!mounted) return;
 
       if (!song) {
         setIsMissingSong(true);
@@ -63,184 +66,284 @@ export function SongEditorScreen({ songId }: SongEditorScreenProps) {
       setName(song.name);
       setLyrics(song.lyrics);
       setScrollSpeed(song.scrollSpeed);
-      setCreatedAt(song.createdAt);
+      createdAtRef.current = song.createdAt;
+      stableSongId.current = song.id;
       setIsLoading(false);
-    };
-
-    void loadSong();
+    })();
 
     return () => {
-      isMounted = false;
+      mounted = false;
     };
   }, [songId]);
 
-  const handleSave = useCallback(async () => {
-    if (isLoading || isMissingSong || recordingState === 'recording') {
-      return;
+  // Keyboard mode transitions
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const onShow = () => {
+      setIsEditing(true);
+      Animated.timing(modeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    };
+
+    const onHide = () => {
+      setIsEditing(false);
+      Animated.timing(modeAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+    };
+
+    const showSub = Keyboard.addListener(showEvent, onShow);
+    const hideSub = Keyboard.addListener(hideEvent, onHide);
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [modeAnim]);
+
+  // Auto-save
+  const doSave = useCallback(async (n: string, l: string, s: ScrollSpeed) => {
+    if (!createdAtRef.current) {
+      createdAtRef.current = new Date().toISOString();
     }
-
     await saveSong({
-      createdAt: createdAt ?? new Date().toISOString(),
-      id: songId ?? `song-${Date.now()}`,
-      lyrics,
-      name: name.trim() || 'Untitled song',
-      scrollSpeed,
+      id: stableSongId.current,
+      name: n.trim() || 'Untitled song',
+      lyrics: l,
+      scrollSpeed: s,
+      createdAt: createdAtRef.current,
     });
+  }, []);
 
-    router.replace('/');
-  }, [createdAt, isLoading, isMissingSong, lyrics, name, recordingState, router, scrollSpeed, songId]);
+  const scheduleSave = useCallback(
+    (n: string, l: string, s: ScrollSpeed) => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => void doSave(n, l, s), 400);
+    },
+    [doSave]
+  );
 
-  const handleStartRecording = useCallback(async () => {
-    await startRecording();
-  }, [startRecording]);
+  // Flush save when leaving the screen
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        void doSave(name, lyrics, scrollSpeed);
+      };
+    }, [doSave, name, lyrics, scrollSpeed])
+  );
 
-  const handleStopRecording = useCallback(async () => {
-    await stopRecording();
-  }, [stopRecording]);
+  const handleNameChange = (text: string) => {
+    setName(text);
+    scheduleSave(text, lyrics, scrollSpeed);
+  };
+
+  const handleLyricsChange = (text: string) => {
+    setLyrics(text);
+    scheduleSave(name, text, scrollSpeed);
+  };
+
+  const handleRecord = useCallback(async () => {
+    if (!lyrics.trim()) return;
+    Keyboard.dismiss();
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    await doSave(name, lyrics, scrollSpeed);
+    router.push(`/song/record/${stableSongId.current}` as Href);
+  }, [doSave, lyrics, name, router, scrollSpeed]);
+
+  const editLayerOpacity = modeAnim;
+  const previewLayerOpacity = modeAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
+
+  const hasLyrics = lyrics.trim().length > 0;
+  const bottomInset = Math.max(insets.bottom, 16);
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: '' }} />
+      </View>
+    );
+  }
+
+  if (isMissingSong) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: '' }} />
+        <View style={styles.centered}>
+          <Text style={styles.missingText}>Song not found</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <Pressable
-              disabled={isLoading || isMissingSong || recordingState === 'recording'}
-              onPress={handleSave}
-              style={styles.saveButton}>
-              <ThemedText style={styles.saveButtonLabel}>Save</ThemedText>
-            </Pressable>
-          ),
-          title: songId ? 'Edit Song' : 'New Song',
-        }}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}>
+      <Stack.Screen options={{ title: name.trim() || 'New Song' }} />
+
+      {/* Song name */}
+      <TextInput
+        blurOnSubmit={false}
+        onChangeText={handleNameChange}
+        onSubmitEditing={() => lyricsRef.current?.focus()}
+        placeholder="Song name..."
+        placeholderTextColor={Palette.textSecondary}
+        returnKeyType="next"
+        style={styles.nameInput}
+        value={name}
       />
 
-      {isLoading ? (
-        <View style={styles.centeredState}>
-          <ThemedText>Loading song...</ThemedText>
-        </View>
-      ) : isMissingSong ? (
-        <View style={styles.centeredState}>
-          <ThemedText type="subtitle">Song not found</ThemedText>
-        </View>
-      ) : recordingState === 'idle' ? (
-        <>
-          <TextInput
-            onChangeText={setName}
-            placeholder="Song name"
-            placeholderTextColor="#9CA3AF"
-            style={[
-              styles.nameInput,
-              { backgroundColor: inputBackgroundColor, borderColor: inputBorderColor, color: textColor },
-            ]}
-            value={name}
-          />
+      <View style={styles.divider} />
 
+      {/* Lyrics area — crossfade between edit (DM-Sans) and Lora preview */}
+      <View style={styles.lyricsContainer}>
+        <Animated.View
+          pointerEvents={isEditing ? 'auto' : 'none'}
+          style={[StyleSheet.absoluteFill, { opacity: editLayerOpacity }]}>
           <TextInput
             multiline
-            onChangeText={setLyrics}
-            placeholder="Paste or type lyrics here"
-            placeholderTextColor="#9CA3AF"
-            style={[
-              styles.lyricsInput,
-              { backgroundColor: inputBackgroundColor, borderColor: inputBorderColor, color: textColor },
-            ]}
+            onChangeText={handleLyricsChange}
+            placeholder="Paste or type your lyrics..."
+            placeholderTextColor={Palette.textDisabled}
+            ref={lyricsRef}
+            scrollEnabled
+            style={styles.lyricsEditInput}
             textAlignVertical="top"
             value={lyrics}
           />
+        </Animated.View>
 
-          <ThemedText type="defaultSemiBold">Scroll speed</ThemedText>
-          <SpeedSlider onChange={setScrollSpeed} value={scrollSpeed} />
+        <Animated.View
+          pointerEvents={isEditing ? 'none' : 'auto'}
+          style={[StyleSheet.absoluteFill, { opacity: previewLayerOpacity }]}>
+          <Pressable onPress={() => lyricsRef.current?.focus()} style={StyleSheet.absoluteFill}>
+            <ScrollView
+              contentContainerStyle={styles.lyricsPreviewContent}
+              showsVerticalScrollIndicator={false}>
+              <Text style={lyrics ? styles.lyricsPreviewText : styles.lyricsPreviewPlaceholder}>
+                {lyrics || 'Tap to add lyrics...'}
+              </Text>
+            </ScrollView>
+          </Pressable>
+        </Animated.View>
+      </View>
 
-          <RecordButton
-            onStart={handleStartRecording}
-            onStop={handleStopRecording}
-            recordingState={recordingState}
-          />
-
-          {errorMessage ? <ThemedText style={styles.errorText}>{errorMessage}</ThemedText> : null}
-        </>
-      ) : recordingState === 'recording' ? (
-        <>
-          <LyricsScrollView lyrics={lyrics} scrollSpeed={scrollSpeed} showReRecordButton={false} />
-          <RecordButton
-            onStart={handleStartRecording}
-            onStop={handleStopRecording}
-            recordingState={recordingState}
-          />
-        </>
-      ) : (
-        <View style={styles.postRecordingState}>
-          <ThemedText type="subtitle">Recording captured</ThemedText>
-          <ThemedText numberOfLines={2} style={styles.recordingUriText}>
-            {recordingUri ?? 'Recording is ready.'}
-          </ThemedText>
-          <Pressable onPress={resetRecording} style={styles.previewButton}>
-            <ThemedText style={styles.previewButtonLabel}>Record again</ThemedText>
+      {/* Done bar — visible when keyboard is up */}
+      {isEditing && (
+        <View style={styles.doneBar}>
+          <Pressable
+            hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}
+            onPress={() => Keyboard.dismiss()}
+            style={styles.doneButtonPressable}>
+            <Text style={styles.doneButtonLabel}>Done</Text>
           </Pressable>
         </View>
       )}
-    </View>
+
+      {/* Record CTA */}
+      <Pressable
+        disabled={!hasLyrics}
+        onPress={() => void handleRecord()}
+        style={[
+          styles.recordCta,
+          !hasLyrics && styles.recordCtaDisabled,
+          { paddingBottom: isEditing ? 8 : bottomInset + 8 },
+        ]}>
+        <Text style={[styles.recordCtaText, !hasLyrics && styles.recordCtaTextDisabled]}>
+          Record →
+        </Text>
+      </Pressable>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: Palette.background,
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
   },
-  centeredState: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  errorText: {
-    color: '#B91C1C',
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  saveButton: {
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-  },
-  saveButtonLabel: {
-    color: '#0A7EA4',
-    fontWeight: '600',
-  },
-  previewButton: {
+  centered: {
     alignItems: 'center',
-    backgroundColor: '#0A7EA4',
-    borderRadius: 10,
-    marginTop: 12,
-    paddingVertical: 12,
-  },
-  previewButtonLabel: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  postRecordingState: {
     flex: 1,
-    gap: 12,
     justifyContent: 'center',
   },
-  recordingUriText: {
-    color: '#6B7280',
+  missingText: {
+    color: Palette.textSecondary,
+    fontFamily: 'DM-Sans',
+    fontSize: 16,
   },
   nameInput: {
-    borderRadius: 10,
-    borderWidth: 1,
-    fontSize: 16,
-    marginBottom: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    color: Palette.textPrimary,
+    fontFamily: 'DM-Sans-SemiBold',
+    fontSize: 18,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
-  lyricsInput: {
-    borderRadius: 10,
-    borderWidth: 1,
+  divider: {
+    backgroundColor: Palette.border,
+    height: StyleSheet.hairlineWidth,
+  },
+  lyricsContainer: {
     flex: 1,
+  },
+  lyricsEditInput: {
+    color: Palette.textPrimary,
+    flex: 1,
+    fontFamily: 'DM-Sans',
     fontSize: 16,
-    marginBottom: 12,
-    minHeight: 220,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    lineHeight: 26,
+    paddingBottom: 8,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  lyricsPreviewContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  lyricsPreviewText: {
+    color: Palette.textPrimary,
+    fontFamily: 'Lora',
+    fontSize: 22,
+    lineHeight: 37,
+  },
+  lyricsPreviewPlaceholder: {
+    color: Palette.textSecondary,
+    fontFamily: 'Lora',
+    fontSize: 22,
+    lineHeight: 37,
+  },
+  doneBar: {
+    alignItems: 'flex-end',
+    borderTopColor: Palette.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  doneButtonPressable: {
+    paddingHorizontal: 4,
+  },
+  doneButtonLabel: {
+    color: Palette.accent,
+    fontFamily: 'DM-Sans-SemiBold',
+    fontSize: 16,
+  },
+  recordCta: {
+    alignItems: 'center',
+    backgroundColor: Palette.surface,
+    borderTopColor: Palette.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'center',
+    paddingTop: 16,
+  },
+  recordCtaDisabled: {
+    opacity: 0.35,
+  },
+  recordCtaText: {
+    color: Palette.accent,
+    fontFamily: 'DM-Sans-SemiBold',
+    fontSize: 17,
+  },
+  recordCtaTextDisabled: {
+    color: Palette.textDisabled,
   },
 });

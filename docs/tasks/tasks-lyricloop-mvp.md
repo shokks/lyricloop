@@ -106,15 +106,15 @@ Each parent task follows this lifecycle:
   - [x] 5.8 Get user approval
   - [x] 5.9 Commit changes, merge `feature/5-recording` to `main`, delete branch (~10 min)
 
-- [ ] 6.0 Build post-recording screen (playback + share + re-record)
-  - [ ] 6.1 Create and checkout branch: `git checkout -b feature/6-post-recording` (~5 min)
-  - [ ] 6.2 Create `components/PostRecordingView.tsx` — shown in place of the record button after `stopRecording`; contains Play, Share, and Re-record buttons (~30 min)
-  - [ ] 6.3 Implement playback: use `Audio.Sound.createAsync(uri)` + `sound.playAsync()` / `sound.stopAsync()`; show a playing indicator while audio is playing (~30 min)
-  - [ ] 6.4 Implement share: call `Sharing.shareAsync(uri)` to open the native OS share sheet with the `.m4a` file (~20 min)
-  - [ ] 6.5 Implement re-record: stop any playback, unload sound, clear the recording URI, reset scroll position, return to idle state (~20 min)
-  - [ ] 6.6 Verify: playback plays the recorded audio; share sheet opens with the file and can be sent via iMessage/WhatsApp; re-record resets the screen cleanly (~20 min)
-  - [ ] 6.7 Get user approval
-  - [ ] 6.8 Commit changes, merge `feature/6-post-recording` to `main`, delete branch (~10 min)
+- [x] 6.0 Build post-recording screen (playback + share + re-record)
+  - [x] 6.1 Create and checkout branch: `git checkout -b feature/6-post-recording` (~5 min)
+  - [x] 6.2 Create `components/PostRecordingView.tsx` — shown in place of the record button after `stopRecording`; contains Play, Share, and Re-record buttons (~30 min)
+  - [x] 6.3 Implement playback: use `Audio.Sound.createAsync(uri)` + `sound.playAsync()` / `sound.stopAsync()`; show a playing indicator while audio is playing (~30 min)
+  - [x] 6.4 Implement share: call `Sharing.shareAsync(uri)` to open the native OS share sheet with the `.m4a` file (~20 min)
+  - [x] 6.5 Implement re-record: stop any playback, unload sound, clear the recording URI, reset scroll position, return to idle state (~20 min)
+  - [x] 6.6 Verify: playback plays the recorded audio; share sheet opens with the file and can be sent via iMessage/WhatsApp; re-record resets the screen cleanly (~20 min)
+  - [x] 6.7 Get user approval
+  - [x] 6.8 Commit changes, merge `feature/6-post-recording` to `main`, delete branch (~10 min)
 
 - [ ] 7.0 Wire navigation end-to-end and validate full user flow
   - [ ] 7.1 Create and checkout branch: `git checkout -b feature/7-e2e-validation` (~5 min)

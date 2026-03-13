@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
+import { Palette } from '@/constants/theme';
 import type { Song } from '@/types';
 
 type SongListItemProps = {
@@ -10,32 +10,41 @@ type SongListItemProps = {
   onPress: (id: string) => void;
 };
 
-function formatCreatedDate(createdAt: string): string {
-  const timestamp = new Date(createdAt);
+function formatDate(createdAt: string): string {
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
-  if (Number.isNaN(timestamp.getTime())) {
-    return 'Unknown date';
-  }
-
-  return timestamp.toLocaleDateString();
+function getLyricsPreview(lyrics: string): string {
+  const firstLine = lyrics.split('\n').find((line) => line.trim().length > 0) ?? '';
+  return firstLine.length > 60 ? firstLine.slice(0, 60) + '\u2026' : firstLine;
 }
 
 export function SongListItem({ song, onDelete, onPress }: SongListItemProps) {
+  const preview = getLyricsPreview(song.lyrics);
+
   return (
     <View style={styles.container}>
       <Pressable onPress={() => onPress(song.id)} style={styles.content}>
-        <ThemedText numberOfLines={1} type="defaultSemiBold">
+        <Text numberOfLines={1} style={styles.title}>
           {song.name || 'Untitled song'}
-        </ThemedText>
-        <ThemedText style={styles.dateText}>Created {formatCreatedDate(song.createdAt)}</ThemedText>
+        </Text>
+        {preview ? (
+          <Text numberOfLines={1} style={styles.preview}>
+            {preview}
+          </Text>
+        ) : null}
+        <Text style={styles.date}>{formatDate(song.createdAt)}</Text>
       </Pressable>
 
       <Pressable
-        accessibilityRole="button"
         accessibilityLabel={`Delete ${song.name || 'song'}`}
+        accessibilityRole="button"
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         onPress={() => onDelete(song.id)}
         style={styles.deleteButton}>
-        <Feather color="#DC2626" name="trash-2" size={18} />
+        <Feather color={Palette.textDisabled} name="trash-2" size={16} />
       </Pressable>
     </View>
   );
@@ -44,23 +53,36 @@ export function SongListItem({ song, onDelete, onPress }: SongListItemProps) {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
+    borderBottomColor: Palette.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: '#D1D5DB',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    minHeight: 64,
     paddingVertical: 14,
   },
   content: {
     flex: 1,
-    gap: 4,
+    gap: 3,
     marginRight: 12,
-    paddingVertical: 2,
   },
-  dateText: {
-    color: '#6B7280',
+  title: {
+    color: Palette.textPrimary,
+    fontFamily: 'DM-Sans-SemiBold',
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  preview: {
+    color: Palette.textSecondary,
+    fontFamily: 'DM-Sans',
     fontSize: 13,
     lineHeight: 18,
+  },
+  date: {
+    color: Palette.textDisabled,
+    fontFamily: 'DM-Sans',
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 2,
   },
   deleteButton: {
     borderRadius: 20,

@@ -15,7 +15,7 @@ const MIN_DURATION_BY_SPEED: Record<ScrollSpeed, number> = {
   slow: 1800,
 };
 
-const GLOBAL_PACE_FACTOR = 0.3;
+const GLOBAL_PACE_FACTOR = 0.4;
 
 type UseAutoScrollOptions = {
   lyrics: string;
