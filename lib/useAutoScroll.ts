@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LayoutChangeEvent, NativeSyntheticEvent, NativeScrollEvent, ScrollView } from 'react-native';
 
 import type { ScrollSpeed } from '@/types';
@@ -166,6 +166,22 @@ export function useAutoScroll({ lyrics, scrollSpeed }: UseAutoScrollOptions) {
     scrollViewRef.current?.scrollTo({ animated: false, y: 0 });
   }, [stopAnimation]);
 
+  const stopScroll = useCallback(() => {
+    stopAnimation();
+    pausedRef.current = false;
+    scrollingRef.current = false;
+    setIsPaused(false);
+    setIsScrolling(false);
+    elapsedAtPauseRef.current = 0;
+    startedAtRef.current = null;
+  }, [stopAnimation]);
+
+  useEffect(() => {
+    return () => {
+      stopAnimation();
+    };
+  }, [stopAnimation]);
+
   const onLayout = useCallback((event: LayoutChangeEvent) => {
     viewportHeightRef.current = event.nativeEvent.layout.height;
   }, []);
@@ -190,5 +206,6 @@ export function useAutoScroll({ lyrics, scrollSpeed }: UseAutoScrollOptions) {
     resumeScroll,
     scrollViewRef,
     startScroll,
+    stopScroll,
   };
 }

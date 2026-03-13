@@ -95,16 +95,16 @@ Each parent task follows this lifecycle:
   - [x] 4.8 Get user approval
   - [x] 4.9 Commit changes, merge `feature/4-auto-scroll` to `main`, delete branch (~10 min)
 
-- [ ] 5.0 Implement audio recording with correct iOS/Android audio session
-  - [ ] 5.1 Create and checkout branch: `git checkout -b feature/5-recording` (~5 min)
-  - [ ] 5.2 Create `lib/useRecording.ts` — wraps `expo-av` `Audio.Recording`; exposes `startRecording()`, `stopRecording()` (returns URI), `recordingState` (~45 min)
-  - [ ] 5.3 Inside `startRecording()`, call `Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true, interruptionModeIOS: InterruptionModeIOS.MixWithOthers, interruptionModeAndroid: InterruptionModeAndroid.DoNotMix })` **before** starting the recording — this is the critical iOS fix (~20 min)
-  - [ ] 5.4 Request mic permission (`Audio.requestPermissionsAsync()`) on first tap of record; show a simple error message if denied (~20 min)
-  - [ ] 5.5 Create `components/RecordButton.tsx` — large circular button; idle = red mic icon, recording = pulsing red stop icon; calls `startRecording` / `stopRecording` on press (~30 min)
-  - [ ] 5.6 Wire `RecordButton` to `useAutoScroll`: `startRecording` → `startScroll`, `stopRecording` → stop scroll and transition to post-recording view (~20 min)
-  - [ ] 5.7 Verify **on a real device**: start Spotify, open LyricLoop, tap record — confirm Spotify keeps playing; tap stop — confirm a recording URI is returned (~20 min)
-  - [ ] 5.8 Get user approval
-  - [ ] 5.9 Commit changes, merge `feature/5-recording` to `main`, delete branch (~10 min)
+- [x] 5.0 Implement audio recording with correct iOS/Android audio session
+  - [x] 5.1 Create and checkout branch: `git checkout -b feature/5-recording` (~5 min)
+  - [x] 5.2 Create `lib/useRecording.ts` — wraps `expo-av` `Audio.Recording`; exposes `startRecording()`, `stopRecording()` (returns URI), `recordingState` (~45 min)
+  - [x] 5.3 Inside `startRecording()`, call `Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true, interruptionModeIOS: InterruptionModeIOS.MixWithOthers, interruptionModeAndroid: InterruptionModeAndroid.DoNotMix })` **before** starting the recording — this is the critical iOS fix (~20 min)
+  - [x] 5.4 Request mic permission (`Audio.requestPermissionsAsync()`) on first tap of record; show a simple error message if denied (~20 min)
+  - [x] 5.5 Create `components/RecordButton.tsx` — large circular button; idle = red mic icon, recording = pulsing red stop icon; calls `startRecording` / `stopRecording` on press (~30 min)
+  - [x] 5.6 Wire `RecordButton` to `useAutoScroll`: `startRecording` → `startScroll`, `stopRecording` → stop scroll and transition to post-recording view (~20 min)
+  - [x] 5.7 Verify **on a real device**: start Spotify, open LyricLoop, tap record — confirm Spotify keeps playing; tap stop — confirm a recording URI is returned (~20 min)
+  - [x] 5.8 Get user approval
+  - [x] 5.9 Commit changes, merge `feature/5-recording` to `main`, delete branch (~10 min)
 
 - [ ] 6.0 Build post-recording screen (playback + share + re-record)
   - [ ] 6.1 Create and checkout branch: `git checkout -b feature/6-post-recording` (~5 min)

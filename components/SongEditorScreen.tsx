@@ -3,11 +3,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { LyricsScrollView } from '@/components/LyricsScrollView';
+import { RecordButton } from '@/components/RecordButton';
 import { SpeedSlider } from '@/components/SpeedSlider';
 import { ThemedText } from '@/components/themed-text';
+import { useRecording } from '@/lib/useRecording';
 import { getSongs, saveSong } from '@/lib/storage';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import type { RecordingState, ScrollSpeed } from '@/types';
+import type { ScrollSpeed } from '@/types';
 
 type SongEditorScreenProps = {
   songId?: string;
@@ -22,10 +24,18 @@ export function SongEditorScreen({ songId }: SongEditorScreenProps) {
   const [name, setName] = useState('');
   const [lyrics, setLyrics] = useState('');
   const [scrollSpeed, setScrollSpeed] = useState<ScrollSpeed>('medium');
-  const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [isLoading, setIsLoading] = useState(Boolean(songId));
   const [isMissingSong, setIsMissingSong] = useState(false);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
+
+  const {
+    errorMessage,
+    recordingState,
+    recordingUri,
+    resetRecording,
+    startRecording,
+    stopRecording,
+  } = useRecording();
 
   useEffect(() => {
     if (!songId) {
@@ -65,7 +75,7 @@ export function SongEditorScreen({ songId }: SongEditorScreenProps) {
   }, [songId]);
 
   const handleSave = useCallback(async () => {
-    if (isLoading || isMissingSong) {
+    if (isLoading || isMissingSong || recordingState === 'recording') {
       return;
     }
 
@@ -78,14 +88,25 @@ export function SongEditorScreen({ songId }: SongEditorScreenProps) {
     });
 
     router.replace('/');
-  }, [createdAt, isLoading, isMissingSong, lyrics, name, router, scrollSpeed, songId]);
+  }, [createdAt, isLoading, isMissingSong, lyrics, name, recordingState, router, scrollSpeed, songId]);
+
+  const handleStartRecording = useCallback(async () => {
+    await startRecording();
+  }, [startRecording]);
+
+  const handleStopRecording = useCallback(async () => {
+    await stopRecording();
+  }, [stopRecording]);
 
   return (
     <View style={styles.container}>
       <Stack.Screen
         options={{
           headerRight: () => (
-            <Pressable disabled={isLoading || isMissingSong} onPress={handleSave} style={styles.saveButton}>
+            <Pressable
+              disabled={isLoading || isMissingSong || recordingState === 'recording'}
+              onPress={handleSave}
+              style={styles.saveButton}>
               <ThemedText style={styles.saveButtonLabel}>Save</ThemedText>
             </Pressable>
           ),
@@ -130,16 +151,33 @@ export function SongEditorScreen({ songId }: SongEditorScreenProps) {
           <ThemedText type="defaultSemiBold">Scroll speed</ThemedText>
           <SpeedSlider onChange={setScrollSpeed} value={scrollSpeed} />
 
-          <Pressable onPress={() => setRecordingState('recording')} style={styles.previewButton}>
-            <ThemedText style={styles.previewButtonLabel}>Preview auto-scroll</ThemedText>
-          </Pressable>
+          <RecordButton
+            onStart={handleStartRecording}
+            onStop={handleStopRecording}
+            recordingState={recordingState}
+          />
+
+          {errorMessage ? <ThemedText style={styles.errorText}>{errorMessage}</ThemedText> : null}
+        </>
+      ) : recordingState === 'recording' ? (
+        <>
+          <LyricsScrollView lyrics={lyrics} scrollSpeed={scrollSpeed} showReRecordButton={false} />
+          <RecordButton
+            onStart={handleStartRecording}
+            onStop={handleStopRecording}
+            recordingState={recordingState}
+          />
         </>
       ) : (
-        <LyricsScrollView
-          lyrics={lyrics}
-          onReRecord={() => setRecordingState('idle')}
-          scrollSpeed={scrollSpeed}
-        />
+        <View style={styles.postRecordingState}>
+          <ThemedText type="subtitle">Recording captured</ThemedText>
+          <ThemedText numberOfLines={2} style={styles.recordingUriText}>
+            {recordingUri ?? 'Recording is ready.'}
+          </ThemedText>
+          <Pressable onPress={resetRecording} style={styles.previewButton}>
+            <ThemedText style={styles.previewButtonLabel}>Record again</ThemedText>
+          </Pressable>
+        </View>
       )}
     </View>
   );
@@ -154,6 +192,11 @@ const styles = StyleSheet.create({
   centeredState: {
     flex: 1,
     justifyContent: 'center',
+  },
+  errorText: {
+    color: '#B91C1C',
+    marginTop: 12,
+    textAlign: 'center',
   },
   saveButton: {
     paddingHorizontal: 6,
@@ -173,6 +216,14 @@ const styles = StyleSheet.create({
   previewButtonLabel: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  postRecordingState: {
+    flex: 1,
+    gap: 12,
+    justifyContent: 'center',
+  },
+  recordingUriText: {
+    color: '#6B7280',
   },
   nameInput: {
     borderRadius: 10,

@@ -8,10 +8,16 @@ import type { ScrollSpeed } from '@/types';
 type LyricsScrollViewProps = {
   lyrics: string;
   scrollSpeed: ScrollSpeed;
-  onReRecord: () => void;
+  onReRecord?: () => void;
+  showReRecordButton?: boolean;
 };
 
-export function LyricsScrollView({ lyrics, scrollSpeed, onReRecord }: LyricsScrollViewProps) {
+export function LyricsScrollView({
+  lyrics,
+  scrollSpeed,
+  onReRecord,
+  showReRecordButton = true,
+}: LyricsScrollViewProps) {
   const {
     estimatedDurationMs,
     isPaused,
@@ -24,6 +30,7 @@ export function LyricsScrollView({ lyrics, scrollSpeed, onReRecord }: LyricsScro
     resumeScroll,
     scrollViewRef,
     startScroll,
+    stopScroll,
   } = useAutoScroll({ lyrics, scrollSpeed });
 
   const [didAutoStart, setDidAutoStart] = useState(false);
@@ -49,7 +56,7 @@ export function LyricsScrollView({ lyrics, scrollSpeed, onReRecord }: LyricsScro
 
   const handleReRecord = () => {
     resetScroll();
-    onReRecord();
+    onReRecord?.();
   };
 
   const handleContentSizeChange = (width: number, height: number) => {
@@ -80,6 +87,12 @@ export function LyricsScrollView({ lyrics, scrollSpeed, onReRecord }: LyricsScro
     }
   };
 
+  useEffect(() => {
+    return () => {
+      stopScroll();
+    };
+  }, [stopScroll]);
+
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
@@ -106,9 +119,11 @@ export function LyricsScrollView({ lyrics, scrollSpeed, onReRecord }: LyricsScro
         ) : null}
       </Pressable>
 
-      <Pressable onPress={handleReRecord} style={styles.reRecordButton}>
-        <ThemedText style={styles.reRecordButtonLabel}>Re-record</ThemedText>
-      </Pressable>
+      {showReRecordButton ? (
+        <Pressable onPress={handleReRecord} style={styles.reRecordButton}>
+          <ThemedText style={styles.reRecordButtonLabel}>Re-record</ThemedText>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
