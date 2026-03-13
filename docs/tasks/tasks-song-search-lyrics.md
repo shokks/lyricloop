@@ -279,14 +279,11 @@ Each parent task lifecycle: branch → implement → verify on device → user a
 
 ---
 
-- [ ] 6.0 E2E validation, merge, and roadmap update
-  - [x] 6.1 Full happy path on device (~20 min):
-    - Open app → tap + → search "Chand Sifarish" → select track → lyrics auto-fill → helper text visible → tap Start Recording → synced lines highlight as time advances → stop → play back → done
-  - [x] 6.2 Fallback path — no lyrics (~10 min):
-    - Search a song likely not in LRCLIB (e.g. an obscure track) → select it → editor opens with name pre-filled, lyrics empty, no helper text → enter lyrics manually → record normally
-  - [x] 6.3 Skip path (~5 min):
-    - Tap + → tap "Skip / enter manually" → blank editor opens → full flow works as before
-  - [ ] 6.4 Run `npm run lint` and `npx tsc --noEmit` — zero errors (~5 min)
-  - [ ] 6.5 Commit, merge to main, delete branch (~10 min)
-  - [ ] 6.6 Update `docs/roadmap.md` — mark Song Search + Auto-Lyrics as ✅ Complete with today's date (~5 min)
-  - [ ] 6.7 Get user approval
+- [x] 6.0 E2E validation, merge, and roadmap update
+  - [x] 6.1 Full happy path on device (~20 min)
+  - [x] 6.2 Fallback path — no lyrics (~10 min)
+  - [x] 6.3 Skip path (~5 min)
+  - [x] 6.4 Run `npm run lint` and `npx tsc --noEmit` — zero errors (3 pre-existing warnings only)
+  - [x] 6.5 Commit, merge to main, delete branch
+  - [x] 6.6 Update `docs/roadmap.md` — marked ✅ Complete 2026-03-13
+  - [x] 6.7 Get user approval
