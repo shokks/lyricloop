@@ -84,16 +84,16 @@ Each parent task follows this lifecycle:
   - [x] 3.9 Get user approval
   - [x] 3.10 Commit changes, merge `feature/3-song-screen-ui` to `main`, delete branch (~10 min)
 
-- [ ] 4.0 Implement auto-scroll engine
-  - [ ] 4.1 Create and checkout branch: `git checkout -b feature/4-auto-scroll` (~5 min)
-  - [ ] 4.2 Create `lib/useAutoScroll.ts` — returns `scrollViewRef`, `startScroll(durationMs)`, `pauseScroll()`, `resumeScroll()`, `resetScroll()` (~45 min)
-  - [ ] 4.3 Calculate scroll duration from lyrics character count and selected speed: Slow ≈ 60 wpm, Medium ≈ 90 wpm, Fast ≈ 120 wpm; compute total pixel height to scroll and derive duration accordingly (~30 min)
-  - [ ] 4.4 Create `components/LyricsScrollView.tsx` — renders lyrics in a large readable font inside a `ScrollView` driven by the hook; tap anywhere on the lyrics area to toggle pause/resume (~45 min)
-  - [ ] 4.5 Show a subtle "⏸ Paused" badge overlaid on the lyrics when scrolling is paused (~15 min)
-  - [ ] 4.6 Call `resetScroll()` when user taps "Re-record" to snap back to the top (~10 min)
-  - [ ] 4.7 Verify: trigger scroll manually — confirm it runs at all three speeds; tap to pause and resume; tap re-record to confirm reset to top (~20 min)
-  - [ ] 4.8 Get user approval
-  - [ ] 4.9 Commit changes, merge `feature/4-auto-scroll` to `main`, delete branch (~10 min)
+- [x] 4.0 Implement auto-scroll engine
+  - [x] 4.1 Create and checkout branch: `git checkout -b feature/4-auto-scroll` (~5 min)
+  - [x] 4.2 Create `lib/useAutoScroll.ts` — returns `scrollViewRef`, `startScroll(durationMs)`, `pauseScroll()`, `resumeScroll()`, `resetScroll()` (~45 min)
+  - [x] 4.3 Calculate scroll duration from lyrics character count and selected speed: Slow ≈ 60 wpm, Medium ≈ 90 wpm, Fast ≈ 120 wpm; compute total pixel height to scroll and derive duration accordingly (~30 min)
+  - [x] 4.4 Create `components/LyricsScrollView.tsx` — renders lyrics in a large readable font inside a `ScrollView` driven by the hook; tap anywhere on the lyrics area to toggle pause/resume (~45 min)
+  - [x] 4.5 Show a subtle "⏸ Paused" badge overlaid on the lyrics when scrolling is paused (~15 min)
+  - [x] 4.6 Call `resetScroll()` when user taps "Re-record" to snap back to the top (~10 min)
+  - [x] 4.7 Verify: trigger scroll manually — confirm it runs at all three speeds; tap to pause and resume; tap re-record to confirm reset to top (~20 min)
+  - [x] 4.8 Get user approval
+  - [x] 4.9 Commit changes, merge `feature/4-auto-scroll` to `main`, delete branch (~10 min)
 
 - [ ] 5.0 Implement audio recording with correct iOS/Android audio session
   - [ ] 5.1 Create and checkout branch: `git checkout -b feature/5-recording` (~5 min)

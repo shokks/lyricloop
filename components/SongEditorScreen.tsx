@@ -2,6 +2,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { LyricsScrollView } from '@/components/LyricsScrollView';
 import { SpeedSlider } from '@/components/SpeedSlider';
 import { ThemedText } from '@/components/themed-text';
 import { getSongs, saveSong } from '@/lib/storage';
@@ -21,7 +22,7 @@ export function SongEditorScreen({ songId }: SongEditorScreenProps) {
   const [name, setName] = useState('');
   const [lyrics, setLyrics] = useState('');
   const [scrollSpeed, setScrollSpeed] = useState<ScrollSpeed>('medium');
-  const [recordingState] = useState<RecordingState>('idle');
+  const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [isLoading, setIsLoading] = useState(Boolean(songId));
   const [isMissingSong, setIsMissingSong] = useState(false);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
@@ -76,7 +77,7 @@ export function SongEditorScreen({ songId }: SongEditorScreenProps) {
       scrollSpeed,
     });
 
-    router.back();
+    router.replace('/');
   }, [createdAt, isLoading, isMissingSong, lyrics, name, router, scrollSpeed, songId]);
 
   return (
@@ -128,11 +129,17 @@ export function SongEditorScreen({ songId }: SongEditorScreenProps) {
 
           <ThemedText type="defaultSemiBold">Scroll speed</ThemedText>
           <SpeedSlider onChange={setScrollSpeed} value={scrollSpeed} />
+
+          <Pressable onPress={() => setRecordingState('recording')} style={styles.previewButton}>
+            <ThemedText style={styles.previewButtonLabel}>Preview auto-scroll</ThemedText>
+          </Pressable>
         </>
       ) : (
-        <View style={styles.centeredState}>
-          <ThemedText type="subtitle">Teleprompter mode active</ThemedText>
-        </View>
+        <LyricsScrollView
+          lyrics={lyrics}
+          onReRecord={() => setRecordingState('idle')}
+          scrollSpeed={scrollSpeed}
+        />
       )}
     </View>
   );
@@ -154,6 +161,17 @@ const styles = StyleSheet.create({
   },
   saveButtonLabel: {
     color: '#0A7EA4',
+    fontWeight: '600',
+  },
+  previewButton: {
+    alignItems: 'center',
+    backgroundColor: '#0A7EA4',
+    borderRadius: 10,
+    marginTop: 12,
+    paddingVertical: 12,
+  },
+  previewButtonLabel: {
+    color: '#FFFFFF',
     fontWeight: '600',
   },
   nameInput: {
